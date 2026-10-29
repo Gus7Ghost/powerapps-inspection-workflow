@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power Apps Canvas Simulator — Inspección Técnica Industrial</title>
+  <style>
+    :root {
+      --pa-purple: #742774;
+      --pa-purple-dark: #581c58;
+      --pa-blue: #0078d4;
+      --pa-bg: #f3f2f1;
+      --pa-card: #ffffff;
+      --success: #107c41;
+      --warning: #d83b01;
+      --danger: #a80000;
+      --border: #edebe9;
+      --text-main: #323130;
+      --text-sec: #605e5c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Segoe UI", -apple-system, sans-serif; }
+    body { background-color: #201f1e; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; color: var(--text-main); }
+    
+    .device-wrapper {
+      width: 100%;
+      max-width: 980px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 4px solid #3b3a39;
+    }
+
+    /* TOP BAR POWER PLATFORM */
+    .ms-header {
+      background: var(--pa-purple);
+      color: #ffffff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .ms-title { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 1.1rem; }
+    .ms-badge { background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+    .user-pill { font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
+
+    /* NAVIGATION TABS */
+    .tab-bar {
+      display: flex;
+      background: #ffffff;
+      border-bottom: 2px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 14px;
+      background: none;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-sec);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
+    }
+    .tab-btn.active {
+      color: var(--pa-purple);
+      border-bottom-color: var(--pa-purple);
+      background: #faf9f8;
+    }
+
+    /* MAIN CONTAINER */
+    .app-viewport {
+      background: var(--pa-bg);
+      padding: 24px;
+      min-height: 600px;
+    }
+    .view-screen { display: none; }
+    .view-screen.active { display: block; }
+
+    /* DASHBOARD */
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .kpi-card { background: #ffffff; padding: 18px; border-radius: 8px; border-left: 5px solid var(--pa-blue); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .kpi-card.green { border-left-color: var(--success); }
+    .kpi-card.orange { border-left-color: #f59e0b; }
+    .kpi-card.red { border-left-color: var(--danger); }
+    .kpi-card h4 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-sec); margin-bottom: 6px; }
+    .kpi-card .num { font-size: 1.8rem; font-weight: 700; color: #201f1e; }
+
+    .card { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--pa-purple); display: flex; justify-content: space-between; align-items: center; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 10px 12px; background: #f3f2f1; font-size: 0.8rem; text-transform: uppercase; color: var(--text-sec); border-bottom: 1px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    tr:hover { background: #faf9f8; }
+
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .badge-success { background: #dff6dd; color: var(--success); }
+    .badge-warning { background: #fff4ce; color: #795e00; }
+    .badge-danger { background: #fde7e9; color: var(--danger); }
+    .badge-neutral { background: #edebe9; color: var(--text-sec); }
+
+    /* FORM STYLES */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+    .form-control { padding: 10px 12px; border: 1px solid #8a8886; border-radius: 4px; font-size: 0.9rem; }
+    .form-control:focus { outline: none; border-color: var(--pa-purple); box-shadow: 0 0 0 2px rgba(116,39,116,0.2); }
+
+    /* CHECKLIST ITEMS */
+    .checklist-table { width: 100%; margin-top: 10px; }
+    .checklist-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--border); }
+    .checklist-text { flex: 1; font-size: 0.9rem; padding-right: 15px; }
+    .status-btns { display: flex; gap: 6px; }
+    .status-btn {
+      padding: 6px 12px;
+      border: 1px solid #8a8886;
+      border-radius: 4px;
+      background: #ffffff;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .status-btn.selected-pass { background: #dff6dd; border-color: var(--success); color: var(--success); }
+    .status-btn.selected-warn { background: #fff4ce; border-color: #f59e0b; color: #b45309; }
+    .status-btn.selected-fail { background: #fde7e9; border-color: var(--danger); color: var(--danger); }
+
+    /* SIGNATURE PAD */
+    .sig-canvas-wrapper { border: 2px dashed #8a8886; border-radius: 6px; background: #faf9f8; position: relative; }
+    canvas { width: 100%; height: 120px; display: block; cursor: crosshair; }
+    .btn-clear-sig { position: absolute; top: 6px; right: 6px; font-size: 0.75rem; padding: 3px 8px; background: #ffffff; border: 1px solid #8a8886; border-radius: 4px; cursor: pointer; }
+
+    /* BUTTONS */
+    .btn { padding: 10px 20px; border-radius: 4px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--pa-purple); color: #ffffff; }
+    .btn-primary:hover { background: var(--pa-purple-dark); }
+    .btn-success { background: var(--success); color: #ffffff; }
+    .btn-danger { background: var(--danger); color: #ffffff; }
+
+    /* TOAST ALERT */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: none;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+  <div class="device-wrapper">
+    <!-- MS HEADER -->
+    <header class="ms-header">
+      <div class="ms-title">
+        <span>⚡ Power Apps</span>
+        <span class="ms-badge">Canvas App (Tablet / Field Edition)</span>
+      </div>
+      <div class="user-pill">
+        <span>👤 Gustavo Bryan López Cosme (UNI FIIS - LabIAR)</span>
+      </div>
+    </header>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('screen-dashboard')">📊 Dashboard General</button>
+      <button class="tab-btn" onclick="switchTab('screen-new')">📝 Nueva Inspección de Campo</button>
+      <button class="tab-btn" onclick="switchTab('screen-approval')">🛡️ Bandeja de Aprobación (Supervisor)</button>
+    </nav>
+
+    <!-- VIEWPORT -->
+    <main class="app-viewport">
+
+      <!-- SCREEN 1: DASHBOARD -->
+      <section id="screen-dashboard" class="view-screen active">
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <h4>Total Inspecciones</h4>
+            <div class="num" id="kpi-total">12</div>
+          </div>
+          <div class="kpi-card green">
+            <h4>Conformes (Pass)</h4>
+            <div class="num" id="kpi-conformes">9</div>
+          </div>
+          <div class="kpi-card orange">
+            <h4>Observaciones Leves</h4>
+            <div class="num" id="kpi-obs">2</div>
+          </div>
+          <div class="kpi-card red">
+            <h4>Fallas Críticas (Alerta)</h4>
+            <div class="num" id="kpi-criticas">1</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>Últimos Registros Sincronizados con Dataverse</span>
+            <button class="btn btn-primary" onclick="switchTab('screen-new')">+ Iniciar Inspección</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Activo Industrial</th>
+                <th>Inspector</th>
+                <th>Fecha</th>
+                <th>Resultado Global</th>
+                <th>Estado Flujo (Power Automate)</th>
+              </tr>
+            </thead>
+            <tbody id="inspections-tbody">
+              <tr>
+                <td><strong>INSP-20261028-0912</strong></td>
+                <td>Dron UAV Vigilancia Alpha-01</td>
+                <td>glopezc@uni.pe</td>
+                <td>28/10/2026 14:30</td>
+                <td><span class="badge badge-success">Aprobado Conforme</span></td>
+                <td><span class="badge badge-success">Aprobado por Supervisor</span></td>
+              </tr>
+              <tr>
+                <td><strong>INSP-20261028-0845</strong></td>
+                <td>Turbina Hidráulica Principal T-01</td>
+                <td>cmendoza@labiar.pe</td>
+                <td>28/10/2026 11:15</td>
+                <td><span class="badge badge-warning">Observaciones Leves</span></td>
+                <td><span class="badge badge-warning">Pendiente de Aprobación</span></td>
+              </tr>
+              <tr>
+                <td><strong>INSP-20261027-1620</strong></td>
+                <td>Generador Térmico Auxiliar G-02</td>
+                <td>glopezc@uni.pe</td>
+                <td>27/10/2026 16:20</td>
+                <td><span class="badge badge-danger">Falla Crítica</span></td>
+                <td><span class="badge badge-danger">Notificado a Jefatura</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: NUEVA INSPECCIÓN -->
+      <section id="screen-new" class="view-screen">
+        <div class="card">
+          <div class="card-title">
+            <span>Formulario Técnico de Inspección en Terreno</span>
+            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-sec);" id="gps-display">📍 GPS: Capturando coordenadas...</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sel-asset">Seleccionar Activo Industrial (Dataverse):</label>
+              <select id="sel-asset" class="form-control">
+                <option value="UAV-ALPHA-01">Dron de Vigilancia UAV Alpha-01 (LabIAR - UNI)</option>
+                <option value="TURB-HYD-01">Turbina Hidráulica Generación Bloque A</option>
+                <option value="GEN-THERM-02">Generador Térmico de Respaldo G-02</option>
+                <option value="SENS-IOT-HUB">Estación Central de Sensores y Telemetría</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Técnico Responsable:</label>
+              <input type="text" class="form-control" value="Gustavo Bryan López Cosme (glopezc@uni.pe)" readonly style="background: #f3f2f1;">
+            </div>
+          </div>
+
+          <!-- CHECKLIST -->
+          <div class="form-group" style="margin-top: 15px;">
+            <label><strong>Checklist de Criterios Operacionales (PowerFx Collection):</strong></label>
+            <div class="checklist-table" id="checklist-container">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- SIGNATURE PAD -->
+          <div class="form-group" style="margin-top: 20px;">
+            <label><strong>Firma Digital del Técnico Inspector (Control PenInput):</strong></label>
+            <div class="sig-canvas-wrapper">
+              <canvas id="sig-canvas"></canvas>
+              <button type="button" class="btn-clear-sig" onclick="clearSignature()">Borrar Firma</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 25px; display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn" style="background:#e1dfdd;" onclick="switchTab('screen-dashboard')">Cancelar</button>
+            <button class="btn btn-primary" onclick="submitInspection()">⚡ Enviar Inspección (Patch & Flow)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: APROBACIONES SUPERVISOR -->
+      <section id="screen-approval" class="view-screen">
+        <div class="card">
+          <div class="card-title">
+            <span>Bandeja de Aprobación de la Jefatura de Mantenimiento</span>
+            <span class="badge badge-warning">Flujo Automatizado Power Automate</span>
+          </div>
+          <p style="font-size: 0.9rem; color: var(--text-sec); margin-bottom: 16px;">
+            Inspecciones técnicas pendientes de validación formal. Al aprobar, el activo queda certificado como apto en Dataverse y se emite la confirmación vía correo institucional.
+          </p>
+
+          <div id="approvals-list">
+            <!-- Dynamic approvals -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="toast" class="toast">Mensaje del sistema</div>
+
+  <script>
+    // Checklist items
+    const checklistData = [
+      { id: 1, text: "1. Integridad estructural externa, fuselaje y ausencia de fisuras visibles", status: "pass", severity: "Media" },
+      { id: 2, text: "2. Verificación de sellos mecánicos, niveles de lubricante y estanqueidad", status: "pass", severity: "Media" },
+      { id: 3, text: "3. Calibración de transductores térmicos y sensores de vibración", status: "pass", severity: "Alta" },
+      { id: 4, text: "4. Parámetros de aislamiento eléctrico y continuidad de puesta a tierra", status: "pass", severity: "Crítica" },
+      { id: 5, text: "5. Heartbeat de telemetría MAVLink / Enlace de datos de control autónomo", status: "pass", severity: "Alta" }
+    ];
+
+    const pendingApprovals = [
+      { id: "INSP-20261028-0845", asset: "Turbina Hidráulica Principal T-01", tech: "Carlos Mendoza (L2)", result: "Observaciones Leves", date: "28/10/2026 11:15" }
+    ];
+
+    function renderChecklist() {
+      const container = document.getElementById("checklist-container");
+      container.innerHTML = "";
+      checklistData.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "checklist-row";
+        row.innerHTML = `
+          <div class="checklist-text">
+            <strong>${item.text}</strong>
+            <span style="font-size:0.75rem; color:#605e5c; display:block;">Severidad: ${item.severity}</span>
+          </div>
+          <div class="status-btns">
+            <button class="status-btn ${item.status === 'pass' ? 'selected-pass' : ''}" onclick="setChecklistStatus(${index}, 'pass')">✔ Pass</button>
+            <button class="status-btn ${item.status === 'warn' ? 'selected-warn' : ''}" onclick="setChecklistStatus(${index}, 'warn')">⚠️ Warning</button>
+            <button class="status-btn ${item.status === 'fail' ? 'selected-fail' : ''}" onclick="setChecklistStatus(${index}, 'fail')">❌ Fail</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function setChecklistStatus(index, status) {
+      checklistData[index].status = status;
+      renderChecklist();
+    }
+
+    function renderApprovals() {
+      const container = document.getElementById("approvals-list");
+      if (pendingApprovals.length === 0) {
+        container.innerHTML = "<p style='color:#605e5c; text-align:center; padding:30px;'>No hay inspecciones pendientes de aprobación en este momento.</p>";
+        return;
+      }
+      container.innerHTML = "";
+      pendingApprovals.forEach((app, idx) => {
+        const div = document.createElement("div");
+        div.style = "border:1px solid #edebe9; border-radius:8px; padding:16px; margin-bottom:12px; background:#faf9f8; display:flex; justify-content:space-between; align-items:center;";
+        div.innerHTML = `
+          <div>
+            <div style="font-weight:700; color:#1e3a8a;">${app.id} — ${app.asset}</div>
+            <div style="font-size:0.85rem; color:#605e5c; margin-top:4px;">Inspector: ${app.tech} | Fecha: ${app.date}</div>
+            <div style="margin-top:6px;"><span class="badge ${app.result === 'Falla Crítica' ? 'badge-danger' : 'badge-warning'}">${app.result}</span></div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-success" onclick="approveInspection(${idx})">✔ Aprobar</button>
+            <button class="btn btn-danger" onclick="rejectInspection(${idx})">✖ Rechazar</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function approveInspection(idx) {
+      const item = pendingApprovals.splice(idx, 1)[0];
+      showToast(`Inspección ${item.id} aprobada. Flujo Power Automate completado.`, "#107c41");
+      renderApprovals();
+      document.getElementById("kpi-conformes").innerText = parseInt(document.getElementById("kpi-conformes").innerText) + 1;
+    }
+
+    function rejectInspection(idx) {
+      const item = pendingApprovals.splice(idx, 1)[0];
+      showToast(`Inspección ${item.id} rechazada. Se notificó al técnico para revisión.`, "#d83b01");
+      renderApprovals();
+    }
+
+    // SIGNATURE PAD CANVAS
+    const canvas = document.getElementById("sig-canvas");
+    const ctx = canvas.getContext("2d");
+    let isDrawing = false;
+    let hasSigned = false;
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = 120;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#1e293b";
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    canvas.addEventListener("mousedown", (e) => { isDrawing = true; hasSigned = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
+    canvas.addEventListener("mousemove", (e) => { if (isDrawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } });
+    canvas.addEventListener("mouseup", () => { isDrawing = false; });
+    canvas.addEventListener("mouseleave", () => { isDrawing = false; });
+
+    function clearSignature() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasSigned = false;
+    }
+
+    function switchTab(screenId) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".view-screen").forEach(s => s.classList.remove("active"));
+      document.getElementById(screenId).classList.add("active");
+      if (screenId === 'screen-new') {
+        setTimeout(resizeCanvas, 50);
+        // Simulate GPS capture
+        document.getElementById("gps-display").innerText = "📍 GPS: -12.016420, -77.049815 (Lima, Perú | FIIS UNI)";
+      }
+      event.target.classList.add("active");
+    }
+
+    function showToast(msg, bg = "#107c41") {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.style.backgroundColor = bg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3500);
+    }
+
+    function submitInspection() {
+      if (!hasSigned) {
+        showToast("Advertencia: Debe firmar digitalmente en el cuadro antes de enviar.", "#a80000");
+        return;
+      }
+
+      // Check results
+      const hasFail = checklistData.some(c => c.status === "fail");
+      const hasWarn = checklistData.some(c => c.status === "warn");
+      let overall = "Aprobado Conforme";
+      let badgeClass = "badge-success";
+      if (hasFail) { overall = "Falla Crítica"; badgeClass = "badge-danger"; }
+      else if (hasWarn) { overall = "Observaciones Leves"; badgeClass = "badge-warning"; }
+
+      const code = "INSP-" + new Date().toISOString().slice(0,10).replace(/-/g,'') + "-" + Math.floor(1000 + Math.random()*9000);
+      const assetSel = document.getElementById("sel-asset");
+      const assetName = assetSel.options[assetSel.selectedIndex].text;
+
+      // Add to table
+      const tbody = document.getElementById("inspections-tbody");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong>${code}</strong></td>
+        <td>${assetName}</td>
+        <td>glopezc@uni.pe</td>
+        <td>${new Date().toLocaleString()}</td>
+        <td><span class="badge ${badgeClass}">${overall}</span></td>
+        <td><span class="badge badge-warning">Pendiente de Aprobación</span></td>
+      `;
+      tbody.insertBefore(tr, tbody.firstChild);
+
+      // Add to approvals if not fully passed
+      pendingApprovals.unshift({
+        id: code,
+        asset: assetName,
+        tech: "Gustavo Bryan López Cosme",
+        result: overall,
+        date: new Date().toLocaleString()
+      });
+      renderApprovals();
+
+      // Update counters
+      document.getElementById("kpi-total").innerText = parseInt(document.getElementById("kpi-total").innerText) + 1;
+      if (overall === "Falla Crítica") {
+        document.getElementById("kpi-criticas").innerText = parseInt(document.getElementById("kpi-criticas").innerText) + 1;
+      } else if (overall === "Observaciones Leves") {
+        document.getElementById("kpi-obs").innerText = parseInt(document.getElementById("kpi-obs").innerText) + 1;
+      }
+
+      showToast("¡Inspección enviada! Power Automate activó el flujo de aprobación.", "#107c41");
+      clearSignature();
+      switchTab("screen-dashboard");
+    }
+
+    // Init
+    renderChecklist();
+    renderApprovals();
+    resizeCanvas();
+  </script>
+</body>
+</html>

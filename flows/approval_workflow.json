@@ -1,0 +1,134 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "PowerApp",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "InspectionId": { "type": "string", "description": "ID del registro de inspección en Dataverse" },
+            "InspectionCode": { "type": "string", "description": "Código formateado INSP-YYYYMMDD-HHMMSS" },
+            "AssetName": { "type": "string", "description": "Nombre del equipo inspeccionado" },
+            "OverallResult": { "type": "string", "description": "Aprobado Conforme, Observaciones Leves, Falla Crítica" },
+            "InspectorName": { "type": "string", "description": "Nombre completo del técnico" },
+            "InspectorEmail": { "type": "string", "description": "Correo del técnico inspector" }
+          },
+          "required": ["InspectionId", "InspectionCode", "AssetName", "OverallResult", "InspectorEmail"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Condicion_Falla_Critica": {
+      "type": "If",
+      "expression": {
+        "equals": [
+          "@triggerBody()['OverallResult']",
+          "Falla Crítica"
+        ]
+      },
+      "actions": {
+        "Notificar_Teams_Alerta_Critica": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": { "connection": { "name": "@parameters('$connections')['teams']['connectionId']" } },
+            "method": "post",
+            "path": "/v3/beta/teams/conversation/message/poster/flowbot",
+            "body": {
+              "recipient": "ingenieria-jefatura@uni.pe",
+              "messageBody": "🚨 **ALERTA CRÍTICA DE EQUIPO INDUSTRIAL**\n\n- **Código:** @{triggerBody()['InspectionCode']}\n- **Activo:** @{triggerBody()['AssetName']}\n- **Inspector:** @{triggerBody()['InspectorName']}\n- **Resultado:** FALLA CRÍTICA DETECTADA\n\nEl equipo ha sido bloqueado en el sistema hasta que se realice el peritaje técnico."
+            }
+          }
+        }
+      },
+      "else": {
+        "actions": {}
+      },
+      "runAfter": {}
+    },
+    "Iniciar_y_Esperar_Aprobacion_Supervisor": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['approvals']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/approvals",
+        "body": {
+          "approvalType": "ApproveReject",
+          "title": "Aprobación Requerida: Inspección @{triggerBody()['InspectionCode']} - @{triggerBody()['AssetName']}",
+          "assignedTo": "supervisor-mantenimiento@uni.pe",
+          "details": "El técnico @{triggerBody()['InspectorName']} ha completado la inspección técnica con resultado: **@{triggerBody()['OverallResult']}**.\n\nPor favor revise el checklist y apruebe o rechace la certificación operativa.",
+          "itemLink": "https://apps.powerapps.com/play/industrial-inspection?inspectionId=@{triggerBody()['InspectionId']}",
+          "itemLinkDescription": "Ver Inspección en Canvas App"
+        }
+      },
+      "runAfter": {
+        "Condicion_Falla_Critica": ["Succeeded"]
+      }
+    },
+    "Condicion_Resultado_Aprobacion": {
+      "type": "If",
+      "expression": {
+        "equals": [
+          "@body('Iniciar_y_Esperar_Aprobacion_Supervisor')?['outcome']",
+          "Approve"
+        ]
+      },
+      "actions": {
+        "Actualizar_Dataverse_Aprobado": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": { "connection": { "name": "@parameters('$connections')['commondataservice']['connectionId']" } },
+            "method": "patch",
+            "path": "/v2/datasets/@{encodeURIComponent('default.cds')}/tables/iar_inspections/items/@{triggerBody()['InspectionId']}",
+            "body": {
+              "iar_approval_status": "Aprobado por Supervisor"
+            }
+          }
+        },
+        "Enviar_Correo_Confirmacion_Tecnico": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": { "connection": { "name": "@parameters('$connections')['office365']['connectionId']" } },
+            "method": "post",
+            "path": "/v2/Mail",
+            "body": {
+              "To": "@triggerBody()['InspectorEmail']",
+              "Subject": "CERTIFICADO APROBADO: Inspección @{triggerBody()['InspectionCode']}",
+              "Body": "Estimado(a) @{triggerBody()['InspectorName']},\n\nSu inspección para el activo @{triggerBody()['AssetName']} ha sido **Aprobada** por la supervisión de mantenimiento.\n\nComentarios del supervisor: @{body('Iniciar_y_Esperar_Aprobacion_Supervisor')?['comments']}\n\nSaludos cordiales,\nSistema Integrado de Mantenimiento - LabIAR UNI"
+            }
+          },
+          "runAfter": {
+            "Actualizar_Dataverse_Aprobado": ["Succeeded"]
+          }
+        }
+      },
+      "else": {
+        "actions": {
+          "Actualizar_Dataverse_Rechazado": {
+            "type": "ApiConnection",
+            "inputs": {
+              "host": { "connection": { "name": "@parameters('$connections')['commondataservice']['connectionId']" } },
+              "method": "patch",
+              "path": "/v2/datasets/@{encodeURIComponent('default.cds')}/tables/iar_inspections/items/@{triggerBody()['InspectionId']}",
+              "body": {
+                "iar_approval_status": "Rechazado"
+              }
+            }
+          }
+        }
+      },
+      "runAfter": {
+        "Iniciar_y_Esperar_Aprobacion_Supervisor": ["Succeeded"]
+      }
+    }
+  }
+}

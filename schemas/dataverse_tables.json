@@ -1,0 +1,58 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/dataverse/v1.0/entity-metadata.json",
+  "solutionName": "IndustrialInspectionSolution",
+  "version": "1.0.0.0",
+  "publisher": {
+    "name": "UNI_LabIAR",
+    "prefix": "iar"
+  },
+  "tables": [
+    {
+      "name": "iar_asset",
+      "displayName": "Activo Industrial",
+      "pluralName": "Activos Industriales",
+      "primaryKey": "iar_assetid",
+      "columns": [
+        { "name": "iar_assetid", "type": "UniqueIdentifier", "required": true },
+        { "name": "iar_tag", "type": "String", "maxLength": 50, "required": true, "unique": true, "displayName": "Código de Etiqueta" },
+        { "name": "iar_name", "type": "String", "maxLength": 150, "required": true, "displayName": "Nombre del Equipo" },
+        { "name": "iar_category", "type": "OptionSet", "options": ["Turbina Hidráulica", "Generador Térmico", "Dron de Monitoreo UAV", "Transformador Eléctrico", "Batería LiPo"], "displayName": "Categoría" },
+        { "name": "iar_location", "type": "String", "maxLength": 100, "displayName": "Ubicación Física" },
+        { "name": "iar_status", "type": "OptionSet", "options": ["Operativo", "En Mantenimiento", "Fuera de Servicio", "Inspección Requerida"], "displayName": "Estado Operacional" }
+      ]
+    },
+    {
+      "name": "iar_inspection",
+      "displayName": "Inspección Técnica",
+      "pluralName": "Inspecciones Técnicas",
+      "primaryKey": "iar_inspectionid",
+      "columns": [
+        { "name": "iar_inspectionid", "type": "UniqueIdentifier", "required": true },
+        { "name": "iar_inspection_code", "type": "String", "maxLength": 30, "required": true, "displayName": "Código de Inspección" },
+        { "name": "iar_asset_id", "type": "Lookup", "targetTable": "iar_asset", "required": true, "displayName": "Activo Inspeccionado" },
+        { "name": "iar_inspector_email", "type": "String", "maxLength": 100, "required": true, "displayName": "Correo del Inspector" },
+        { "name": "iar_date", "type": "DateTime", "required": true, "displayName": "Fecha y Hora" },
+        { "name": "iar_gps_latitude", "type": "Decimal", "precision": 10, "scale": 6, "displayName": "Latitud GPS" },
+        { "name": "iar_gps_longitude", "type": "Decimal", "precision": 10, "scale": 6, "displayName": "Longitud GPS" },
+        { "name": "iar_overall_result", "type": "OptionSet", "options": ["Aprobado Conforme", "Observaciones Leves", "Falla Crítica"], "displayName": "Resultado Global" },
+        { "name": "iar_approval_status", "type": "OptionSet", "options": ["Borrador", "Pendiente de Aprobación", "Aprobado por Supervisor", "Rechazado"], "displayName": "Estado de Aprobación" },
+        { "name": "iar_signature_base64", "type": "Memo", "displayName": "Firma Digital del Técnico" },
+        { "name": "iar_photo_url", "type": "String", "maxLength": 500, "displayName": "Evidencia Fotográfica" }
+      ]
+    },
+    {
+      "name": "iar_checklist_item",
+      "displayName": "Ítem de Verificación",
+      "pluralName": "Ítems de Verificación",
+      "primaryKey": "iar_itemid",
+      "columns": [
+        { "name": "iar_itemid", "type": "UniqueIdentifier", "required": true },
+        { "name": "iar_inspection_id", "type": "Lookup", "targetTable": "iar_inspection", "required": true },
+        { "name": "iar_check_title", "type": "String", "maxLength": 200, "required": true },
+        { "name": "iar_status", "type": "OptionSet", "options": ["Pass", "Warning", "Fail", "N/A"] },
+        { "name": "iar_severity", "type": "OptionSet", "options": ["Baja", "Media", "Alta", "Crítica"] },
+        { "name": "iar_comments", "type": "String", "maxLength": 500 }
+      ]
+    }
+  ]
+}
